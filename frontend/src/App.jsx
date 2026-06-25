@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import Home from './pages/Home.jsx'
@@ -19,6 +19,8 @@ import MyAgents from './pages/MyAgents.jsx'
 import DeveloperPortal from './pages/DeveloperPortal.jsx'
 import RegisterAgent from './pages/RegisterAgent.jsx'
 import AdminUser from './pages/AdminUser.jsx'
+import { useAuth } from './AuthContext.jsx'
+
 
 
 function Placeholder({ name }) {
@@ -31,6 +33,12 @@ function Placeholder({ name }) {
   )
 }
 
+function RequireAuth({ children }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
 export default function App() {
   return (
     <>
@@ -39,7 +47,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/directory" element={<Directory />} />
-          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/marketplace" element={<RequireAuth><Marketplace /></RequireAuth>} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout-success" element={<CheckoutSuccess />} />
           <Route path="/blog" element={<Blog />} />
