@@ -64,7 +64,7 @@ router.get('/pending-status', async (req, res) => {
 })
 
 // pending agents awaiting review, with developer email
-router.get('/pending-agents', async (req, res) => {
+router.get('/pending-agents', requireAuth, requireAdmin, async (req, res) => {
   const { data, error } = await supabase
     .from('agents')
     .select('id, name, description, type, price, request_quota, output_type, input_schema, users!agents_developer_id_fkey(email)')
@@ -75,14 +75,14 @@ router.get('/pending-agents', async (req, res) => {
 })
 
 // approve → live on marketplace
-router.post('/agents/:id/approve', async (req, res) => {
+router.post('/agents/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   const { error } = await supabase.from('agents').update({ status: 'approved' }).eq('id', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
 })
 
 // reject → soft-delete (developer sees it gone; never hit marketplace)
-router.post('/agents/:id/reject', async (req, res) => {
+router.post('/agents/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   const { error } = await supabase.from('agents').update({ deleted: true }).eq('id', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
