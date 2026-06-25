@@ -3,8 +3,7 @@ import 'dotenv/config'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-// Resend's shared test sender — works with no domain setup.
-const FROM = 'Digeon.ai <onboarding@resend.dev>'
+const FROM = 'Digeon.ai <noreply@digeon.ai>'
 
 export async function sendEmail(to, subject, content) {
   const isHtml = /<[a-z][\s\S]*>/i.test(content) // crude: looks like HTML?
