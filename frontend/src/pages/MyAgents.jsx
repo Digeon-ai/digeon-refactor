@@ -111,10 +111,12 @@ function AgentRunner({ agent, token, onRan, onDismiss }) {
   }
 
   async function dismiss() {
+    if (!confirm(`Remove "${agent.name}" permanently? You still have ${agent.requests_left} request${agent.requests_left === 1 ? '' : 's'} left, and this can't be undone.`)) return
     const r = await fetch(`${API}/api/my-agents/${agent.id}/dismiss`, {
       method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
     })
     if (r.ok) onDismiss(agent.id)
+    else alert('Could not remove agent')
   }
 
   const inputCls = "w-full bg-[#121823] border border-[#273141] rounded-lg px-3 py-2 text-textlight outline-none focus:border-brand"
@@ -131,8 +133,8 @@ function AgentRunner({ agent, token, onRan, onDismiss }) {
           <span className={`text-sm font-semibold px-3 py-1 rounded-full ${out ? 'bg-[#3a1f24] text-[#e63946]' : 'bg-[#15333033] text-brand border border-brand'}`}>
             {agent.requests_left} left
           </span>
-          {agent.deleted && out && (
-            <button onClick={dismiss} title="Remove this agent" className="bg-[#e63946] hover:brightness-110 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">×</button>
+          {agent.deleted && (
+            <button onClick={dismiss} title="Remove this agent permanently" className="bg-[#e63946] hover:brightness-110 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">×</button>
           )}
         </div>
       </div>

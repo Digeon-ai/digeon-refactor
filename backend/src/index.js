@@ -4,7 +4,7 @@ import 'dotenv/config'
 import { supabase } from './supabase.js'
 import authRoutes from './routes/auth.js'
 import adminRoutes from './routes/admin.js'
-import { requireAuth } from './auth.js'
+import { requireAuth, requireAdmin } from './auth.js'
 import jwt from 'jsonwebtoken'
 import mediaRoutes from './routes/media.js'
 import blogRoutes from './routes/blogs.js'
@@ -90,6 +90,98 @@ app.post('/api/tools/:id/rating', requireAuth, async (req, res) => {
   const avg = count ? Math.round((rows.reduce((s, r) => s + r.value, 0) / count) * 100) / 100 : 0
 
   res.json({ avg, count, user: value })
+})
+
+// ---- Directory admin: manage tools ----
+
+// categories for the add-tool dropdown
+app.get('/api/directory/categories', requireAuth, requireAdmin, async (req, res) => {
+  const { data, error } = await supabase.from('categories').select('id, name').order('name')
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
+})
+
+// all tools, newest first, for the management list
+app.get('/api/directory/admin/tools', requireAuth, requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('tools')
+    .select('id, name, description, pricing, link, category_id, categories(name)')
+    .order('id', { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  const shaped = (data || []).map((t) => ({
+    id: t.id, name: t.name, description: t.description,
+    pricing: t.pricing, link: t.link,
+    category_id: t.category_id,
+    category: t.categories?.name || '(uncategorized)',
+  }))
+  res.json(shaped)
+})
+
+// add a tool — optionally creating a new category on the fly
+app.post('/api/directory/admin/tools', requireAuth, requireAdmin, async (req, res) => {
+  const { name, link, description, pricing, categoryId, newCategory } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' })
+  if (!link?.trim()) return res.status(400).json({ error: 'Link is required' })
+
+  let catId = categoryId
+  const newCat = (newCategory || '').trim()
+  if (newCat) {
+    // unique constraint on categories.name makes this safe to upsert
+    const { data: cat, error: catErr } = await supabase
+      .from('categories').upsert({ name: newCat }, { onConflict: 'name' })
+      .select('id').single()
+    if (catErr) return res.status(500).json({ error: catErr.message })
+    catId = cat.id
+  }
+  if (!catId) return res.status(400).json({ error: 'Pick a category or add a new one' })
+
+  const { error } = await supabase.from('tools').insert({
+    name: name.trim(),
+    link: link.trim(),
+    description: (description || '').trim() || null,
+    pricing: pricing || null,
+    category_id: catId,
+  })
+  if (error) return res.status(500).json({ error: error.message })
+  clearDirectoryCache()       // public Directory reflects it right away
+  res.json({ ok: true })
+})
+
+// edit a tool — same shape as add, optionally creating a new category
+app.put('/api/directory/admin/tools/:id', requireAuth, requireAdmin, async (req, res) => {
+  const { name, link, description, pricing, categoryId, newCategory } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' })
+  if (!link?.trim()) return res.status(400).json({ error: 'Link is required' })
+
+  let catId = categoryId
+  const newCat = (newCategory || '').trim()
+  if (newCat) {
+    const { data: cat, error: catErr } = await supabase
+      .from('categories').upsert({ name: newCat }, { onConflict: 'name' })
+      .select('id').single()
+    if (catErr) return res.status(500).json({ error: catErr.message })
+    catId = cat.id
+  }
+  if (!catId) return res.status(400).json({ error: 'Pick a category or add a new one' })
+
+  const { error } = await supabase.from('tools').update({
+    name: name.trim(),
+    link: link.trim(),
+    description: (description || '').trim() || null,
+    pricing: pricing || null,
+    category_id: catId,
+  }).eq('id', Number(req.params.id))
+  if (error) return res.status(500).json({ error: error.message })
+  clearDirectoryCache()
+  res.json({ ok: true })
+})
+
+// delete a tool (ratings cascade-delete via FK)
+app.delete('/api/directory/admin/tools/:id', requireAuth, requireAdmin, async (req, res) => {
+  const { error } = await supabase.from('tools').delete().eq('id', Number(req.params.id))
+  if (error) return res.status(500).json({ error: error.message })
+  clearDirectoryCache()
+  res.json({ ok: true })
 })
 
 const port = process.env.PORT || 8000

@@ -84,8 +84,9 @@ router.delete('/:agentId/dismiss', requireAuth, async (req, res) => {
     .from('user_agents').select('id, requests_left, agents(deleted)')
     .eq('user_id', req.user.id).eq('agent_id', agentId).maybeSingle()
   if (!owned) return res.status(404).json({ error: 'Not found' })
-  // only allow dismissing if it's actually depleted and deleted
-  if (!(owned.agents?.deleted && owned.requests_left <= 0)) {
+  // allow dismissing any developer-deleted agent, even with requests left —
+  // the endpoint may be dead, so it would otherwise sit there forever
+  if (!owned.agents?.deleted) {
     return res.status(400).json({ error: 'Agent is still active' })
   }
   await supabase.from('user_agents').delete().eq('id', owned.id)

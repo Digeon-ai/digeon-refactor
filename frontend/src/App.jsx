@@ -18,6 +18,8 @@ import CheckoutSuccess from './pages/CheckoutSuccess.jsx'
 import MyAgents from './pages/MyAgents.jsx'
 import DeveloperPortal from './pages/DeveloperPortal.jsx'
 import RegisterAgent from './pages/RegisterAgent.jsx'
+import AdminUser from './pages/AdminUser.jsx'
+
 
 function Placeholder({ name }) {
   return (
@@ -48,6 +50,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/users/:id" element={<AdminUser />} />
           <Route path="/my-agents" element={<MyAgents />} />
           <Route path="/developer" element={<DeveloperPortal />} />
           <Route path="/developer/register" element={<RegisterAgent />} />
