@@ -27,7 +27,13 @@ export function clearDirectoryCache() {
 
 const app = express()
 app.use(express.json({ limit: '25mb' }))
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN }))
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean)
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
+    cb(new Error('Not allowed by CORS'))
+  },
+}))
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/media', mediaRoutes)
