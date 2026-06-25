@@ -18,6 +18,11 @@ export default function RegisterAgent() {
   const [price, setPrice] = useState('')
   const [requestQuota, setRequestQuota] = useState('')
   const [endpointUrl, setEndpointUrl] = useState('')
+  const [httpMethod, setHttpMethod] = useState('POST')
+  const [bodyTemplate, setBodyTemplate] = useState('')
+  const [headers, setHeaders] = useState([])
+  const [responsePath, setResponsePath] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -27,6 +32,12 @@ export default function RegisterAgent() {
   }
   function addField() { setFields((prev) => [...prev, { label: '', type: 'text' }]) }
   function removeField(i) { setFields((prev) => prev.filter((_, idx) => idx !== i)) }
+
+  function updateHeader(i, key, val) {
+    setHeaders((prev) => prev.map((h, idx) => (idx === i ? { ...h, [key]: val } : h)))
+  }
+  function addHeader() { setHeaders((prev) => [...prev, { key: '', value: '' }]) }
+  function removeHeader(i) { setHeaders((prev) => prev.filter((_, idx) => idx !== i)) }
 
   async function submit() {
     setError('')
@@ -44,6 +55,10 @@ export default function RegisterAgent() {
         body: JSON.stringify({
           name, description, inputSchema: fields, outputType,
           price: Number(price), requestQuota: Number(requestQuota), endpointUrl,
+          httpMethod,
+          bodyTemplate: bodyTemplate.trim() || null,
+          requestHeaders: Object.fromEntries(headers.filter((h) => h.key.trim()).map((h) => [h.key.trim(), h.value])),
+          responsePath: responsePath.trim() || null,
         }),
       })
       const data = await r.json()
@@ -122,6 +137,68 @@ export default function RegisterAgent() {
           <label className={label}>API endpoint</label>
           <input value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} placeholder="https://api.example.com/endpoint" className={input} />
           <p className="text-gray-500 text-xs mt-1.5">We'll send a test request to verify it's reachable before submitting.</p>
+        </div>
+
+        {/* Advanced request settings */}
+        <div className="border-t border-[#273141] pt-4">
+          <button type="button" onClick={() => setShowAdvanced((s) => !s)} className="text-sm font-semibold text-brand hover:underline">
+            {showAdvanced ? '▾' : '▸'} Advanced request settings
+          </button>
+          <p className="text-gray-500 text-xs mt-1">Configure how we call your API. Defaults work for standard POST/JSON agents.</p>
+
+          {showAdvanced && (
+            <div className="flex flex-col gap-5 mt-4">
+              <div>
+                <label className={label}>HTTP method</label>
+                <select value={httpMethod} onChange={(e) => setHttpMethod(e.target.value)} className={input}>
+                  {['POST', 'GET', 'PUT'].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <p className="text-gray-500 text-xs mt-1.5">
+                  GET: put inputs in the endpoint URL with {'{FieldLabel}'}, e.g. <code>https://api.example.com/{'{Prompt}'}</code>
+                </p>
+              </div>
+
+              {httpMethod !== 'GET' && (
+                <div>
+                  <label className={label}>Body template (optional)</label>
+                  <textarea
+                    value={bodyTemplate}
+                    onChange={(e) => setBodyTemplate(e.target.value)}
+                    placeholder={'{"messages":[{"role":"user","content":{Prompt}}]}'}
+                    className={input + ' min-h-[90px] font-mono text-sm'}
+                  />
+                  <p className="text-gray-500 text-xs mt-1.5">
+                    Use {'{FieldLabel}'} for inputs — write them <b>without quotes</b> (we encode them safely). Leave blank to send all inputs as a plain JSON object.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className={label}>Request headers (optional)</label>
+                <div className="flex flex-col gap-2">
+                  {headers.map((h, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input value={h.key} onChange={(e) => updateHeader(i, 'key', e.target.value)} placeholder="Header (e.g. Authorization)" className={input} style={{ flex: '1 1 0%', minWidth: 0 }} />
+                      <input value={h.value} onChange={(e) => updateHeader(i, 'value', e.target.value)} placeholder="Value (e.g. Bearer abc123)" className={input} style={{ flex: '1 1 0%', minWidth: 0 }} />
+                      <button onClick={() => removeHeader(i)} className="bg-[#e63946] text-white rounded-lg w-9 h-9 flex-shrink-0 flex items-center justify-center hover:brightness-110">×</button>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={addHeader} className="mt-2 w-full border border-brand text-brand hover:bg-brand hover:text-white rounded-lg py-2 text-sm font-semibold transition">
+                  + Add Header
+                </button>
+                <p className="text-gray-500 text-xs mt-1.5">For API keys / auth. Stored server-side, never exposed to buyers.</p>
+              </div>
+
+              <div>
+                <label className={label}>Response field path (optional)</label>
+                <input value={responsePath} onChange={(e) => setResponsePath(e.target.value)} placeholder="e.g. choices.0.message.content" className={input} />
+                <p className="text-gray-500 text-xs mt-1.5">
+                  Where the answer lives in your API's JSON response. Leave blank — we auto-detect it. Only set this if the wrong text comes back.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && <p className="text-[#e63946] text-sm">{error}</p>}

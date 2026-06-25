@@ -51,7 +51,7 @@ async function endpointIsAlive(url) {
 
 // register a new agent — runs health-check, then stores as 'pending'
 router.post('/register', requireAuth, async (req, res) => {
-  const { name, description, type, inputSchema, outputType, price, requestQuota, endpointUrl } = req.body
+  const { name, description, type, inputSchema, outputType, price, requestQuota, endpointUrl, httpMethod, bodyTemplate, requestHeaders, responsePath } = req.body
 
   // validation — all mandatory, requests >= 5
   if (!name?.trim() || !description?.trim() || !endpointUrl?.trim() || !outputType?.trim()) {
@@ -78,7 +78,12 @@ router.post('/register', requireAuth, async (req, res) => {
     input_schema: inputSchema, output_type: outputType.trim(),
     price: priceNum, request_quota: quotaNum, endpoint_url: endpointUrl.trim(),
     developer_id: req.user.id, status: 'pending',
+    http_method: (httpMethod || 'POST').toUpperCase(),
+    body_template: bodyTemplate || null,
+    request_headers: requestHeaders || {},
+    response_path: responsePath || null,
   })
+  
   if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
 })
